@@ -21,7 +21,7 @@ if (!$conn) {
 	printf("Failed to connect to MySQL: " . mysqli_connect_error());
 }
 
-$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','CorpWarDeclaredMsg')";
+$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','CorpWarDeclaredMsg','MoonminingLaserFired')";
 
 $data = mysqli_query($conn, $sql);
 
@@ -32,12 +32,13 @@ if (!$data) {
 //Iterate through rows
 foreach($data as $row) {
 
-	//Format Message
+	//Format Message and create variables
 	$text = $row['text'];
 	$type = $row['type'];
+	$orecounter = 1;
 
 	//Structure Attack
-	if($type = "StructureUnderAttack") {
+	if($type == "StructureUnderAttack") {
 		$lines = explode(PHP_EOL, $text);
 		foreach($lines as $line) {
 			if(strpos($line, "allianceName") === 0) {
@@ -82,7 +83,7 @@ foreach($data as $row) {
 	}
 
 	//Corp War Dec
-	if($type = "CorpWarDeclaredMsg") {
+	if($type == "CorpWarDeclaredMsg") {
                 $lines = explode(PHP_EOL, $text);
                 foreach($lines as $line) {
 			if(strpos($line, "againstID") === 0) {
@@ -133,30 +134,111 @@ foreach($data as $row) {
 					$alliancedata = json_decode($result, true);
 					$alliancename = $alliancedata['name'];
                                 }
-
-
-$context = stream_context_create($opts);
-
-// Parse the results into an array
-$result = file_get_contents($remote_url, false, $context);
-
-$moondata = json_decode($result, true);
                         }
 		}
 		//Make the Body
 		if($againstid = "98583004") {
 			$body = "War declaration by ".$corpname.$alliancename."!\r\n";
 			if(substr($declaredbyid,0,2)=="98") {
+				$body = "War declaration by ".$corpname."!\r\n";
 				$body = $body. "https://zkillboard.com/corporation/".$declaredbyid;
 			}
 			if(substr($declaredbyid,0,2)=="99") {
+				$body = "War declaration by ".$alliancename."!\r\n";
 				$body = $body."https://zkillboard.com/alliance/".$declaredbyid;
 			}
 		}
 	}
 
+	//Moon Mining Laser Fired
+	if($type == "MoonminingLaserFired") {
+		$lines = explode(PHP_EOL, $text);
+                foreach($lines as $line) {
+			if(strpos($line, "firedBy:") === 0) {
+                                $firedbyid = explode(": ",$line)[1];
+
+				// Lets get the corp data with a GET
+                                $remote_url = "https://esi.evetech.net/v4/characters/$firedbyid/";
+
+                                $opts = array(
+                                	'http' => array(
+                                        'method' => 'GET',
+                                        'header' => array(
+                                        	"User-Agent: ...",
+                                                "Host: esi.evetech.net"
+                                      	),
+                                 	)
+                                );
+
+                                $context = stream_context_create($opts);
+
+                                // Parse the results into an array
+                                $result = file_get_contents($remote_url, false, $context);
+                                $firedbydata = json_decode($result, true);
+                                $firedbyname = $firedbydata['name'];
+
+                        }
+			if(strpos($line, "structureName") === 0) {
+                                $structurename = explode(": ",$line)[1];
+                        }
+			//Ore Data
+			if(strpos($line, "  4") === 0) {
+				$oreamount = explode(" ",$line)[3];
+                                $oreid = str_replace(":", "", explode(" ",$line)[2]);
+
+				//Get Ore Name
+                                $conn = mysqli_connect($dbhost, $dbuser, $dbpass, $dbname);
+                                if (!$conn) {
+                                        printf("Failed to connect to MySQL: " . mysqli_connect_error());
+                                }
+
+                                $sql = "SELECT typename FROM data_types WHERE typeid = ".$oreid." LIMIT 1";
+
+                                $oredata = mysqli_fetch_assoc(mysqli_query($conn, $sql));
+
+                                if (!$oredata) {
+                                        printf("Errormessage: %s\n", mysqli_error($conn));
+                                }
+                                $orename = $oredata['typename'];
+
+				if($orecounter == 1) {
+					$ore1body = $orename.": ".number_format($oreamount,0)." m3\r\n";
+					$oretotal = $oreamount;
+				}
+				if($orecounter == 2) {
+                                        $ore2body = $orename.": ".number_format($oreamount,0)." m3\r\n";
+                                }
+				if($orecounter == 3) {
+                                        $ore3body = $orename.": ".number_format($oreamount,0)." m3\r\n";
+                                }
+				if($orecounter == 4) {
+                                        $ore4body = $orename.": ".number_format($oreamount,0)." m3\r\n";
+                                }
+
+				if($orecounter > 1) {
+					$oretotal = $oretotal + $oreamount;
+				}
+				$orecounter = $orecounter + 1;
+                        }
+		}
+		$body = $structurename." has fracked! Thank you ".$firedbyname."!\r\n";
+		if($ore1body != "") {
+			$body = $body.$ore1body;
+		}
+		if($ore2body != "") {
+                        $body = $body.$ore2body;
+                }
+		if($ore3body != "") {
+                        $body = $body.$ore3body;
+                }
+		if($orecounter == 5) {
+                        $body = $body.$ore4body;
+                }
+		$body = $body."\r\nTotal: ".number_format($oretotal,0)." m3";
+	}
+
 	//Format Discord Notif
-	$message = $body;
+	$message = "@here\r\n".$body;
 	$data = ['content' => $message];
 	$options = [
 	    'http' => [
@@ -167,8 +249,15 @@ $moondata = json_decode($result, true);
 	];
 	$context = stream_context_create($options);
 
-	//Send Discord Notif
-	$result = file_get_contents('$leadershipwebhook', false, $context);
+	if($type == "CorpWarDeclaredMsg" || $type == "StructureUnderAttack") {
+	//Send Leadership Discord Notif
+		$result = file_get_contents($leadershipwebhook, false, $context);
+	}
+
+	if($type == "MoonminingLaserFired") {
+	//Send Moons Discord Notif
+		$result = file_get_contents($moonswebhook, false, $context);
+	}
 
 	//Send Text
 	//mail($t1addresses . "," . $t2addresses,$subject,$text);
