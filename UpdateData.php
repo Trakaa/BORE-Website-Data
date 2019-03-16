@@ -64,6 +64,9 @@ include 'UpdateObserverData.php';
 //Call Notifs
 include 'UpdateNotifs.php';
 
+//Call Calendar
+include 'UpdateCalendar.php';
+
 //Update Last Update Field---------------------
 
 // Set Variables
