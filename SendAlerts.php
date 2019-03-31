@@ -21,7 +21,7 @@ if (!$conn) {
 	printf("Failed to connect to MySQL: " . mysqli_connect_error());
 }
 
-$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','CorpWarDeclaredMsg','MoonminingLaserFired')";
+$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','CorpWarDeclaredMsg','MoonminingLaserFired','MoonminingAutomaticFracture')";
 
 $data = mysqli_query($conn, $sql);
 
@@ -151,7 +151,7 @@ foreach($data as $row) {
 	}
 
 	//Moon Mining Laser Fired
-	if($type == "MoonminingLaserFired") {
+	if($type == "MoonminingLaserFired" || $type == "MoonminingAutomaticFracture") {
 		$lines = explode(PHP_EOL, $text);
                 foreach($lines as $line) {
 			if(strpos($line, "firedBy:") === 0) {
@@ -221,7 +221,11 @@ foreach($data as $row) {
 				$orecounter = $orecounter + 1;
                         }
 		}
-		$body = $structurename." has fracked! Thank you ".$firedbyname."!\r\n";
+		if($type == "MoonminingAutomaticFracture") {
+			$body = $structurename." has fracked! **AUTOMATIC**"."\r\n";
+		} else {
+			$body = $structurename." has fracked! Thank you ".$firedbyname."!\r\n";
+		}
 		if($ore1body != "") {
 			$body = $body.$ore1body;
 		}
@@ -254,7 +258,7 @@ foreach($data as $row) {
 		$result = file_get_contents($leadershipwebhook, false, $context);
 	}
 
-	if($type == "MoonminingLaserFired") {
+	if($type == "MoonminingLaserFired" || $type == "MoonminingAutomaticFracture") {
 	//Send Moons Discord Notif
 		$result = file_get_contents($moonswebhook, false, $context);
 	}
