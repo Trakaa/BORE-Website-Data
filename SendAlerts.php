@@ -154,6 +154,7 @@ foreach($data as $row) {
 	if($type == "MoonminingLaserFired" || $type == "MoonminingAutomaticFracture") {
 		$lines = explode(PHP_EOL, $text);
                 foreach($lines as $line) {
+			//Fired By
 			if(strpos($line, "firedBy:") === 0) {
                                 $firedbyid = explode(": ",$line)[1];
 
@@ -178,9 +179,29 @@ foreach($data as $row) {
                                 $firedbyname = $firedbydata['name'];
 
                         }
+			//Structure Name
 			if(strpos($line, "structureName") === 0) {
-                                $structurename = explode(": ",$line)[1];
+                                $structurename = str_replace("Shastal - ", "", explode(": ",$line)[1]);
                         }
+			//Moon ID
+			if(strpos($line, "moonID") === 0) {
+				$moonid = explode(": ",$line)[1];
+
+				//Get Moon Name
+                                $conn = mysqli_connect($dbhost, $dbuser, $dbpass, $dbname);
+                                if (!$conn) {
+                                        printf("Failed to connect to MySQL: " . mysqli_connect_error());
+                                }
+
+                                $sql = "SELECT moonname FROM data_moons WHERE moonid = ".$moonid." LIMIT 1";
+
+                                $moondata = mysqli_fetch_assoc(mysqli_query($conn, $sql));
+
+				if (!$moondata) {
+                                        printf("Errormessage: %s\n", mysqli_error($conn));
+                                }
+                                $moonname = $moondata['moonname'];
+			}
 			//Ore Data
 			if(strpos($line, "  4") === 0) {
 				$oreamount = explode(" ",$line)[3];
@@ -192,39 +213,42 @@ foreach($data as $row) {
                                         printf("Failed to connect to MySQL: " . mysqli_connect_error());
                                 }
 
-                                $sql = "SELECT typename FROM data_types WHERE typeid = ".$oreid." LIMIT 1";
+                                $sql = "SELECT ore, SUM(isk_per_m3) as 'iskperm3' FROM view_ore_ref_mineral_isk WHERE oretypeid = ".$oreid." GROUP BY ore LIMIT 1";
 
                                 $oredata = mysqli_fetch_assoc(mysqli_query($conn, $sql));
 
                                 if (!$oredata) {
                                         printf("Errormessage: %s\n", mysqli_error($conn));
                                 }
-                                $orename = $oredata['typename'];
+                                $orename = $oredata['ore'];
+				$orevalue = $oredata['iskperm3'];
 
 				if($orecounter == 1) {
-					$ore1body = $orename.": ".number_format($oreamount,0)." m3\r\n";
+					$ore1body = $orename.": ".number_format($oreamount,0)." m3 - ".number_format($oreamount * $orevalue,0)." ISK\r\n";
 					$oretotal = $oreamount;
+					$orevaltotal = $orevalue * $oreamount;
 				}
 				if($orecounter == 2) {
-                                        $ore2body = $orename.": ".number_format($oreamount,0)." m3\r\n";
+                                        $ore2body = $orename.": ".number_format($oreamount,0)." m3 - ".number_format($oreamount * $orevalue,0)." ISK\r\n";
                                 }
 				if($orecounter == 3) {
-                                        $ore3body = $orename.": ".number_format($oreamount,0)." m3\r\n";
+                                        $ore3body = $orename.": ".number_format($oreamount,0)." m3 - ".number_format($oreamount * $orevalue,0)." ISK\r\n";
                                 }
 				if($orecounter == 4) {
-                                        $ore4body = $orename.": ".number_format($oreamount,0)." m3\r\n";
+                                        $ore4body = $orename.": ".number_format($oreamount,0)." m3 - ".number_format($oreamount * $orevalue,0)." ISK\r\n";
                                 }
 
 				if($orecounter > 1) {
 					$oretotal = $oretotal + $oreamount;
+					$orevaluetotal = $orevaluetotal + ($orevalue * $oreamount);
 				}
 				$orecounter = $orecounter + 1;
                         }
 		}
 		if($type == "MoonminingAutomaticFracture") {
-			$body = $structurename." has fracked! **AUTOMATIC**"."\r\n";
+			$body = $structurename." at ".$moonname." has fracked! **AUTOMATIC**"."\r\n";
 		} else {
-			$body = $structurename." has fracked! Thank you ".$firedbyname."!\r\n";
+			$body = $structurename." at ".$moonname." has fracked! Thank you ".$firedbyname."!\r\n";
 		}
 		if($ore1body != "") {
 			$body = $body.$ore1body;
@@ -238,7 +262,7 @@ foreach($data as $row) {
 		if($orecounter == 5) {
                         $body = $body.$ore4body;
                 }
-		$body = $body."\r\nTotal: ".number_format($oretotal,0)." m3";
+		$body = $body."\r\nTotal: ".number_format($oretotal,0)." m3 - ".number_format($orevaluetotal,0)." ISK";
 	}
 
 	//Format Discord Notif
