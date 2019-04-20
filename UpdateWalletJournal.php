@@ -3,7 +3,7 @@
 //Loop through each wallet Division 1-7
 for ($i = 1; $i <= 7; $i++) {
 	// Lets get the wallet data with a GET
-	$remote_url = "https://esi.evetech.net/v4/corporations/853746728/wallets/$i/journal";
+	$remote_url = "https://esi.evetech.net/v4/corporations/$corporationid/wallets/$i/journal";
 
 	$opts = array(
 	  'http' => array(
@@ -51,7 +51,7 @@ for ($i = 1; $i <= 7; $i++) {
 		$secondpartyid = mysqli_escape_string($conn, $row['second_party_id']);
 
 		//Write the Notif table
-		$sql = "INSERT IGNORE INTO data_walletjournal (amount,balance,date,description,firstpartyid,walletjournalid,reftype,secondpartyid) VALUES ($amount,$balance,'$date','$description',$firstpartyid,$id,'$reftype',$secondpartyid)";
+		$sql = "INSERT IGNORE INTO data_walletjournal (division,amount,balance,date,description,firstpartyid,walletjournalid,reftype,secondpartyid) VALUES ($i,$amount,$balance,'$date','$description',$firstpartyid,$id,'$reftype',$secondpartyid)";
 
 		$query = mysqli_query($conn, $sql);
 
