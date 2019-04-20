@@ -138,6 +138,9 @@ include 'UpdateContracts.php';
 //Call Members Data
 include 'UpdateMembers.php';
 
+//Call Wallet Journal Data
+include 'UpdateWalletJournal.php';
+
 //Update Last Update Field---------------------
 
 // Set Variables
