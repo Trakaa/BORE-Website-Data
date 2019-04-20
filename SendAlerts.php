@@ -21,7 +21,7 @@ if (!$conn) {
 	printf("Failed to connect to MySQL: " . mysqli_connect_error());
 }
 
-$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','CorpWarDeclaredMsg','MoonminingLaserFired','MoonminingAutomaticFracture','StructureLostShields','MercOfferedNegotiationMsg','StructureFuelAlert')";
+$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','CorpWarDeclaredMsg','MoonminingLaserFired','MoonminingAutomaticFracture','StructureLostShields','MercOfferedNegotiationMsg','StructureFuelAlert','CorpWarInvalidatedMsg','CorpWarRetractedMsg','CorpWarSurrenderMsg')";
 
 $data = mysqli_query($conn, $sql);
 
@@ -443,6 +443,60 @@ foreach($data as $row) {
                 $body = $structurename." is low on fuel!";
         }
 
+	//War is Ending
+	if($type == "CorpWarInvalidatedMsg" || $type == "CorpWarRetractedMsg" || $type == "CorpWarSurrenderMsg") {
+                $lines = explode(PHP_EOL, $text);
+                foreach($lines as $line) {
+			//Declared By
+			if(strpos($line, "declaredByID") === 0) {
+                                $declaredbyid = explode(" ",$line)[1];
+
+                                if(substr($declaredbyid,0,2)=="98"){
+                                        // Lets get the corp data with a GET
+                                        $remote_url = "https://esi.evetech.net/v4/corporations/$declaredbyid/";
+
+                                        $opts = array(
+                                          'http' => array(
+                                            'method' => 'GET',
+                                            'header' => array(
+                                                 "User-Agent: ...",
+                                                 "Host: esi.evetech.net"
+                                            ),
+                                          )
+                                        );
+
+                                        $context = stream_context_create($opts);
+
+                                        // Parse the results into an array
+                                        $result = file_get_contents($remote_url, false, $context);
+                                        $declaredbydata = json_decode($result, true);
+                                        $declaredbyname = $declaredbydata['name'];
+                                }
+				if(substr($declaredbyid,0,2)=="99"){
+                                        // Lets get the alliance data with a GET
+                                        $remote_url = "https://esi.evetech.net/v3/alliances/$declaredbyid/";
+
+                                        $opts = array(
+                                          'http' => array(
+                                            'method' => 'GET',
+                                            'header' => array(
+                                                 "User-Agent: ...",
+                                                 "Host: esi.evetech.net"
+                                            ),
+                                          )
+                                        );
+
+                                        $context = stream_context_create($opts);
+
+                                        // Parse the results into an array
+                                        $result = file_get_contents($remote_url, false, $context);
+                                        $declaredbydata = json_decode($result, true);
+                                        $declaredbyname = $declaredbydata['name'];
+                                }
+			}
+		}
+		$body = "Our war against ".$declaredbyname." is over! Hostilities will continue 24 hours from this message.";
+	}
 
 	//Format Discord Notif
 	$message = "@here\r\n".$body;
@@ -456,7 +510,7 @@ foreach($data as $row) {
 	];
 	$context = stream_context_create($options);
 
-	if($type == "CorpWarDeclaredMsg" || $type == "StructureUnderAttack" || $type == "StructureLostShields" || $type == "MercOfferedNegotiationMsg" || "StructureFuelAlert") {
+	if($type == "CorpWarDeclaredMsg" || $type == "StructureUnderAttack" || $type == "StructureLostShields" || $type == "MercOfferedNegotiationMsg" || "StructureFuelAlert" || "CorpWarInvalidatedMsg" || "CorpWarRetractedMsg" || "CorpWarSurrenderMsg") {
 	//Send Leadership Discord Notif
 		$result = file_get_contents($leadershipwebhook, false, $context);
 	}
