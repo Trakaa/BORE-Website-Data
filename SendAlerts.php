@@ -21,7 +21,7 @@ if (!$conn) {
 	printf("Failed to connect to MySQL: " . mysqli_connect_error());
 }
 
-$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','CorpWarDeclaredMsg','MoonminingLaserFired','MoonminingAutomaticFracture','StructureLostShields')";
+$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','CorpWarDeclaredMsg','MoonminingLaserFired','MoonminingAutomaticFracture','StructureLostShields','MercOfferedNegotiationMsg','StructureFuelAlert')";
 
 $data = mysqli_query($conn, $sql);
 
@@ -303,6 +303,147 @@ foreach($data as $row) {
 		$body = $body."Vulnerability will begin at ".date("Y/m/d H:i:s",strtotime('+'.$timeleft.' seconds',strtotime($timestamp)))." EVE time!";
 	}
 
+	//Mercenary Offered Assistance
+        if($type == "MercOfferedNegotiationMsg") {
+                $lines = explode(PHP_EOL, $text);
+                foreach($lines as $line) {
+			//Aggressor
+			if(strpos($line, "aggressorID") === 0) {
+				$aggressorid = explode(" ",$line)[1];
+
+				if(substr($aggressorid,0,2)=="98"){
+                                        // Lets get the corp data with a GET
+                                        $remote_url = "https://esi.evetech.net/v4/corporations/$aggressorid/";
+
+                                        $opts = array(
+                                          'http' => array(
+                                            'method' => 'GET',
+                                            'header' => array(
+                                                 "User-Agent: ...",
+                                                 "Host: esi.evetech.net"
+                                            ),
+                                          )
+                                        );
+
+                                        $context = stream_context_create($opts);
+
+                                        // Parse the results into an array
+                                        $result = file_get_contents($remote_url, false, $context);
+                                        $aggressordata = json_decode($result, true);
+                                        $aggressorname = $aggressordata['name'];
+                                }
+                                if(substr($aggressorid,0,2)=="99"){
+                                        // Lets get the alliance data with a GET
+                                        $remote_url = "https://esi.evetech.net/v3/alliances/$aggressorid/";
+
+                                        $opts = array(
+                                          'http' => array(
+                                            'method' => 'GET',
+                                            'header' => array(
+                                                 "User-Agent: ...",
+                                                 "Host: esi.evetech.net"
+                                            ),
+                                          )
+                                        );
+
+                                        $context = stream_context_create($opts);
+
+                                        // Parse the results into an array
+                                        $result = file_get_contents($remote_url, false, $context);
+                                        $aggressordata = json_decode($result, true);
+                                        $aggressorname = $aggressordata['name'];
+                                }
+			}
+			//Isk Value
+			if(strpos($line, "iskValue") === 0) {
+				$iskvalue = number_format(explode(" ",$line)[1],0);
+			}
+			//Mercenary ID
+			if(strpos($line, "mercID") === 0) {
+				$mercenaryid = explode(" ",$line)[1];
+
+				if(substr($mercenaryid,0,2)=="98"){
+                                        // Lets get the corp data with a GET
+                                        $remote_url = "https://esi.evetech.net/v4/corporations/$mercenaryid/";
+
+                                        $opts = array(
+                                          'http' => array(
+                                            'method' => 'GET',
+                                            'header' => array(
+                                                 "User-Agent: ...",
+                                                 "Host: esi.evetech.net"
+                                            ),
+                                          )
+                                        );
+
+                                        $context = stream_context_create($opts);
+
+                                        // Parse the results into an array
+                                        $result = file_get_contents($remote_url, false, $context);
+                                        $mercdata = json_decode($result, true);
+                                        $mercname = $mercdata['name'];
+                                }
+				if(substr($mercenaryid,0,2)=="99"){
+                                        // Lets get the alliance data with a GET
+                                        $remote_url = "https://esi.evetech.net/v3/alliances/$mercenaryid/";
+
+                                        $opts = array(
+                                          'http' => array(
+                                            'method' => 'GET',
+                                            'header' => array(
+                                                 "User-Agent: ...",
+                                                 "Host: esi.evetech.net"
+                                            ),
+                                          )
+                                        );
+
+                                        $context = stream_context_create($opts);
+
+                                        // Parse the results into an array
+                                        $result = file_get_contents($remote_url, false, $context);
+                                        $mercdata = json_decode($result, true);
+                                        $mercname = $mercdata['name'];
+                                }
+			}
+		}
+		//Make the Body
+		$body = $mercname." has offered assistance in our war with ".$aggressorname." for a price of ".$iskvalue." ISK!\r\n";
+                if(substr($mercenaryid,0,2)=="98") {
+                        $body = $body. "https://zkillboard.com/corporation/".$mercenaryid;
+                }
+                if(substr($mercenaryid,0,2)=="99") {
+                        $body = $body."https://zkillboard.com/alliance/".$mercenaryid;
+                }
+	}
+
+	//Structure Low Fuel
+        if($type == "StructureFuelAlert") {
+                $lines = explode(PHP_EOL, $text);
+                foreach($lines as $line) {
+                        //Structure Name
+                        if(strpos($line, "structureID") === 0) {
+                                $structureid = explode(" ",$line)[2];
+
+                                //Get Structure Name
+                                $conn = mysqli_connect($dbhost, $dbuser, $dbpass, $dbname);
+                                if (!$conn) {
+                                        printf("Failed to connect to MySQL: " . mysqli_connect_error());
+                                }
+
+                                $sql = "SELECT structurename FROM data_structures WHERE structureid = ".$structureid." LIMIT 1";
+
+                                $structuredata = mysqli_fetch_assoc(mysqli_query($conn, $sql));
+
+                                if (!$structuredata) {
+                                        printf("Errormessage: %s\n", mysqli_error($conn));
+                                }
+                                $structurename = $structuredata['structurename'];
+                        }
+                }
+                $body = $structurename." is low on fuel!";
+        }
+
+
 	//Format Discord Notif
 	$message = "@here\r\n".$body;
 	$data = ['content' => $message];
@@ -315,7 +456,7 @@ foreach($data as $row) {
 	];
 	$context = stream_context_create($options);
 
-	if($type == "CorpWarDeclaredMsg" || $type == "StructureUnderAttack" || $type == "StructureLostShields") {
+	if($type == "CorpWarDeclaredMsg" || $type == "StructureUnderAttack" || $type == "StructureLostShields" || $type == "MercOfferedNegotiationMsg" || "StructureFuelAlert") {
 	//Send Leadership Discord Notif
 		$result = file_get_contents($leadershipwebhook, false, $context);
 	}
