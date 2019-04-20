@@ -52,6 +52,9 @@ $data = json_decode($result, true);
 
 $accesstoken = $data['access_token'];
 
+//Set Eddys Exit Strategy Corporation ID
+$corporationid = 98583004;
+
 //Call Structures
 include 'UpdateStructures.php';
 
@@ -66,6 +69,9 @@ include 'UpdateNotifs.php';
 
 //Call Calendar
 include 'UpdateCalendar.php';
+
+//Call Wallet Journal Data
+include 'UpdateWalletJournal.php';
 
 //Update Last Update Field---------------------
 
@@ -128,6 +134,9 @@ $result = file_get_contents($remote_url, false, $context);
 $data = json_decode($result, true);
 
 $accesstoken = $data['access_token'];
+
+//Set BNI Corporation ID
+$corporationid = 853746728;
 
 //Call Orders Data
 include 'UpdateOrders.php';
