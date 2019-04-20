@@ -21,7 +21,7 @@ if (!$conn) {
 	printf("Failed to connect to MySQL: " . mysqli_connect_error());
 }
 
-$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','CorpWarDeclaredMsg','MoonminingLaserFired','MoonminingAutomaticFracture')";
+$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','CorpWarDeclaredMsg','MoonminingLaserFired','MoonminingAutomaticFracture','StructureLostShields')";
 
 $data = mysqli_query($conn, $sql);
 
@@ -265,6 +265,44 @@ foreach($data as $row) {
 		$body = $body."\r\nTotal: ".number_format($oretotal,0)." m3 - ".number_format($orevaluetotal,0)." ISK";
 	}
 
+	//Structure Lost Shields
+	if($type == "StructureLostShields") {
+        	$lines = explode(PHP_EOL, $text);
+                foreach($lines as $line) {
+			//Structure Name
+			if(strpos($line, "structureID") === 0) {
+                                $structureid = explode(" ",$line)[2];
+
+                                //Get Structure Name
+                                $conn = mysqli_connect($dbhost, $dbuser, $dbpass, $dbname);
+                                if (!$conn) {
+                                        printf("Failed to connect to MySQL: " . mysqli_connect_error());
+                                }
+
+                                $sql = "SELECT structurename FROM data_structures WHERE structureid = ".$structureid." LIMIT 1";
+
+                                $structuredata = mysqli_fetch_assoc(mysqli_query($conn, $sql));
+
+                                if (!$structuredata) {
+                                        printf("Errormessage: %s\n", mysqli_error($conn));
+                                }
+                                $structurename = $structuredata['structurename'];
+                        }
+			//Vuln Date
+			if(strpos($line, "timeLeft") === 0) {
+				$timeleft = explode(" ",$line)[1];
+				$timeleft = number_format($timeleft/10000000,0);
+			}
+			if(strpos($line, "timestamp") === 0) {
+				$timestamp = explode(" ",$line)[1];
+				$timestamp = $timestamp/10000000 - 11644473600;
+				$timestamp = gmdate("Y/m/d H:i:s", $timestamp);
+                        }
+		}
+		$body = $structurename." has lost shields!\r\n";
+		$body = $body."Vulnerability will begin at ".date("Y/m/d H:i:s",strtotime('+'.$timeleft.' seconds',strtotime($timestamp)))." EVE time!";
+	}
+
 	//Format Discord Notif
 	$message = "@here\r\n".$body;
 	$data = ['content' => $message];
@@ -277,7 +315,7 @@ foreach($data as $row) {
 	];
 	$context = stream_context_create($options);
 
-	if($type == "CorpWarDeclaredMsg" || $type == "StructureUnderAttack") {
+	if($type == "CorpWarDeclaredMsg" || $type == "StructureUnderAttack" || $type == "StructureLostShields") {
 	//Send Leadership Discord Notif
 		$result = file_get_contents($leadershipwebhook, false, $context);
 	}
