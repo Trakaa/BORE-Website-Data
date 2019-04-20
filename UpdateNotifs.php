@@ -1,4 +1,4 @@
-[B<?php
+<?php
 
 // Lets get the mail data with a GET
 $remote_url = 'https://esi.evetech.net/v4/characters/2114745778/notifications/';
