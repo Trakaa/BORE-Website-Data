@@ -510,7 +510,7 @@ foreach($data as $row) {
 	];
 	$context = stream_context_create($options);
 
-	if($type == "CorpWarDeclaredMsg" || $type == "StructureUnderAttack" || $type == "StructureLostShields" || $type == "MercOfferedNegotiationMsg" || "StructureFuelAlert" || "CorpWarInvalidatedMsg" || "CorpWarRetractedMsg" || "CorpWarSurrenderMsg") {
+	if($type == "CorpWarDeclaredMsg" || $type == "StructureUnderAttack" || $type == "StructureLostShields" || $type == "MercOfferedNegotiationMsg" || $type == "StructureFuelAlert" || $type == "CorpWarInvalidatedMsg" || $type == "CorpWarRetractedMsg" || $type == "CorpWarSurrenderMsg") {
 	//Send Leadership Discord Notif
 		$result = file_get_contents($leadershipwebhook, false, $context);
 	}
