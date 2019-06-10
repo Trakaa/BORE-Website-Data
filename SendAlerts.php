@@ -15,6 +15,8 @@ $t1addresses = $settings["Tier1Addresses"];
 $t2addresses = $settings["Tier2Addresses"];
 $subject = "BORE Alliance Alert";
 
+$laststructure = "";
+
 //Get Data
 $conn = mysqli_connect($dbhost, $dbuser, $dbpass, $dbname);
 if (!$conn) {
@@ -511,8 +513,19 @@ foreach($data as $row) {
 	$context = stream_context_create($options);
 
 	if($type == "CorpWarDeclaredMsg" || $type == "StructureUnderAttack" || $type == "StructureLostShields" || $type == "MercOfferedNegotiationMsg" || $type == "StructureFuelAlert" || $type == "CorpWarInvalidatedMsg" || $type == "CorpWarRetractedMsg" || $type == "CorpWarSurrenderMsg") {
-	//Send Leadership Discord Notif
-		$result = file_get_contents($leadershipwebhook, false, $context);
+
+		//Check for recurring Structure Attack Messages for Same Structure
+		if($type == "StructureUnderAttack") {
+			if($laststructure <> $structurename) {
+				//Send Normal Leadership Discord Notif
+	                        $result = file_get_contents($leadershipwebhook, false, $context);
+			}
+			//Set laststructure
+			$laststructure = $structurename;
+		} else {
+			//Send Normal Leadership Discord Notif
+	                $result = file_get_contents($leadershipwebhook, false, $context);
+		}
 	}
 
 	if($type == "MoonminingLaserFired" || $type == "MoonminingAutomaticFracture") {
