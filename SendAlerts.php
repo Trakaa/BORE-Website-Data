@@ -23,7 +23,7 @@ if (!$conn) {
 	printf("Failed to connect to MySQL: " . mysqli_connect_error());
 }
 
-$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','CorpWarDeclaredMsg','MoonminingLaserFired','MoonminingAutomaticFracture','StructureLostShields','MercOfferedNegotiationMsg','StructureFuelAlert','CorpWarInvalidatedMsg','CorpWarRetractedMsg','CorpWarSurrenderMsg')";
+$sql = "SELECT text,type FROM data_notifs WHERE notified IS NULL AND type IN('StructureUnderAttack','WarDeclared','MoonminingLaserFired','MoonminingAutomaticFracture','StructureLostShields','MercOfferedNegotiationMsg','StructureFuelAlert','CorpWarInvalidatedMsg','CorpWarRetractedMsg','CorpWarSurrenderMsg')";
 
 $data = mysqli_query($conn, $sql);
 
@@ -85,7 +85,7 @@ foreach($data as $row) {
 	}
 
 	//Corp War Dec
-	if($type == "CorpWarDeclaredMsg") {
+	if($type == "WarDeclared") {
                 $lines = explode(PHP_EOL, $text);
                 foreach($lines as $line) {
 			if(strpos($line, "againstID") === 0) {
@@ -137,16 +137,22 @@ foreach($data as $row) {
 					$alliancename = $alliancedata['name'];
                                 }
                         }
+			if(strpos($line, "warHQ:") === 0) {
+				$warhq = explode(": ",$line)[1];
+				$warhq = str_replace("<b>","",$warhq);
+				$warhq = str_replace("</b>","",$warhq);
+			}
 		}
 		//Make the Body
 		if($againstid = "98583004") {
-			$body = "War declaration by ".$corpname.$alliancename."!\r\n";
 			if(substr($declaredbyid,0,2)=="98") {
 				$body = "War declaration by ".$corpname."!\r\n";
-				$body = $body. "https://zkillboard.com/corporation/".$declaredbyid;
+				$body = $body."War HQ: ".$warhq."!\r\n";
+				$body = $body."https://zkillboard.com/corporation/".$declaredbyid;
 			}
 			if(substr($declaredbyid,0,2)=="99") {
 				$body = "War declaration by ".$alliancename."!\r\n";
+				$body = $body."War HQ: ".$warhq."!\r\n";
 				$body = $body."https://zkillboard.com/alliance/".$declaredbyid;
 			}
 		}
@@ -512,7 +518,7 @@ foreach($data as $row) {
 	];
 	$context = stream_context_create($options);
 
-	if($type == "CorpWarDeclaredMsg" || $type == "StructureUnderAttack" || $type == "StructureLostShields" || $type == "MercOfferedNegotiationMsg" || $type == "StructureFuelAlert" || $type == "CorpWarInvalidatedMsg" || $type == "CorpWarRetractedMsg" || $type == "CorpWarSurrenderMsg") {
+	if($type == "WarDeclared" || $type == "StructureUnderAttack" || $type == "StructureLostShields" || $type == "MercOfferedNegotiationMsg" || $type == "StructureFuelAlert" || $type == "CorpWarInvalidatedMsg" || $type == "CorpWarRetractedMsg" || $type == "CorpWarSurrenderMsg") {
 
 		//Check for recurring Structure Attack Messages for Same Structure
 		if($type == "StructureUnderAttack") {
