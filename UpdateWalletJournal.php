@@ -51,7 +51,7 @@ for ($i = 1; $i <= 7; $i++) {
 		$secondpartyid = mysqli_escape_string($conn, $row['second_party_id']);
 
 		//Write the Notif table
-		$sql = "INSERT IGNORE INTO data_walletjournal (division,amount,balance,date,description,firstpartyid,walletjournalid,reftype,secondpartyid) VALUES ($i,$amount,$balance,'$date','$description',$firstpartyid,$id,'$reftype',$secondpartyid)";
+		$sql = "INSERT IGNORE INTO data_walletjournal (division,amount,balance,date,description,firstpartyid,walletjournalid,reftype,secondpartyid,corporationid) VALUES ($i,$amount,$balance,'$date','$description',$firstpartyid,$id,'$reftype',$secondpartyid,$corporationid)";
 
 		$query = mysqli_query($conn, $sql);
 
