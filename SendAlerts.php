@@ -234,7 +234,7 @@ foreach($data as $row) {
 				if($orecounter == 1) {
 					$ore1body = $orename.": ".number_format($oreamount,0)." m3 - ".number_format($oreamount * $orevalue,0)." ISK\r\n";
 					$oretotal = $oreamount;
-					$orevaltotal = $orevalue * $oreamount;
+					$orevaluetotal = $orevalue * $oreamount;
 				}
 				if($orecounter == 2) {
                                         $ore2body = $orename.": ".number_format($oreamount,0)." m3 - ".number_format($oreamount * $orevalue,0)." ISK\r\n";
